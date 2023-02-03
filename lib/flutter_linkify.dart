@@ -28,6 +28,10 @@ class Linkify extends StatelessWidget {
   /// Callback for tapping a link
   final LinkCallback? onOpen;
 
+  /// Callback for tapping any non-[TextElement] linkify element.
+  /// If this is provided, [onOpen] will be ignored.
+  final void Function(LinkifyElement)? onLinkTap;
+
   /// linkify's options.
   final LinkifyOptions options;
 
@@ -81,6 +85,7 @@ class Linkify extends StatelessWidget {
     required this.text,
     this.linkifiers = defaultLinkifiers,
     this.onOpen,
+    this.onLinkTap,
     this.options = const LinkifyOptions(),
     // TextSpan
     this.style,
@@ -121,6 +126,7 @@ class Linkify extends StatelessWidget {
             )
             .merge(linkStyle),
         onOpen: onOpen,
+        onLinkTap: onLinkTap,
         useMouseRegion: true,
         textStyleBuilder: textStyleBuilder,
       ),
@@ -151,6 +157,10 @@ class SelectableLinkify extends StatelessWidget {
 
   /// Callback for tapping a link
   final LinkCallback? onOpen;
+
+  /// Callback for tapping any non-[TextElement] linkify element.
+  /// If this is provided, [onOpen] will be ignored.
+  final void Function(LinkifyElement)? onLinkTap;
 
   /// linkify's options.
   final LinkifyOptions options;
@@ -239,6 +249,7 @@ class SelectableLinkify extends StatelessWidget {
     required this.text,
     this.linkifiers = defaultLinkifiers,
     this.onOpen,
+    this.onLinkTap,
     this.options = const LinkifyOptions(),
     // TextSpan
     this.style,
@@ -282,6 +293,7 @@ class SelectableLinkify extends StatelessWidget {
       buildTextSpan(
         elements,
         onOpen: onOpen,
+        onLinkTap: onLinkTap,
         style: Theme.of(context).textTheme.bodyMedium?.merge(style),
         linkStyle: Theme.of(context)
             .textTheme
@@ -341,6 +353,7 @@ TextSpan buildTextSpan(
   TextStyle? linkStyle,
   TextStyle? Function(LinkifyElement)? textStyleBuilder,
   LinkCallback? onOpen,
+  void Function(LinkifyElement)? onLinkTap,
   bool useMouseRegion = false,
 }) {
   return TextSpan(
@@ -356,20 +369,25 @@ TextSpan buildTextSpan(
         }
 
         if (element is LinkableElement) {
+          final gestureRecognizer = onLinkTap != null
+              ? (TapGestureRecognizer()..onTap = () => onLinkTap(element))
+              : onOpen != null
+                  ? (TapGestureRecognizer()..onTap = () => onOpen(element))
+                  : null;
           if (useMouseRegion) {
             return LinkableSpan(
               mouseCursor: SystemMouseCursors.click,
               inlineSpan: TextSpan(
                 text: element.text,
                 style: textStyle ?? linkStyle,
-                recognizer: onOpen != null ? (TapGestureRecognizer()..onTap = () => onOpen(element)) : null,
+                recognizer: gestureRecognizer,
               ),
             );
           } else {
             return TextSpan(
               text: element.text,
               style: textStyle ?? linkStyle,
-              recognizer: onOpen != null ? (TapGestureRecognizer()..onTap = () => onOpen(element)) : null,
+              recognizer: gestureRecognizer,
             );
           }
         }
@@ -377,6 +395,7 @@ TextSpan buildTextSpan(
         return TextSpan(
           text: element.text,
           style: textStyle ?? linkStyle,
+          recognizer: onLinkTap != null ? (TapGestureRecognizer()..onTap = () => onLinkTap(element)) : null,
         );
       },
     ).toList(),
