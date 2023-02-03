@@ -1,6 +1,5 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:linkify/linkify.dart';
 
 export 'package:linkify/linkify.dart'
@@ -39,6 +38,10 @@ class Linkify extends StatelessWidget {
 
   /// Style of link text
   final TextStyle? linkStyle;
+
+  /// Builder to determine style of text (both non-link and link). If this is provided
+  /// [style] and [linkStyle] will be ignored.
+  final TextStyle? Function(LinkifyElement)? textStyleBuilder;
 
   // Text.rich
 
@@ -82,6 +85,7 @@ class Linkify extends StatelessWidget {
     // TextSpan
     this.style,
     this.linkStyle,
+    this.textStyleBuilder,
     // RichText
     this.textAlign = TextAlign.start,
     this.textDirection,
@@ -106,18 +110,19 @@ class Linkify extends StatelessWidget {
     return Text.rich(
       buildTextSpan(
         elements,
-        style: Theme.of(context).textTheme.bodyText2?.merge(style),
-        onOpen: onOpen,
-        useMouseRegion: true,
+        style: Theme.of(context).textTheme.bodyMedium?.merge(style),
         linkStyle: Theme.of(context)
             .textTheme
-            .bodyText2
+            .bodyMedium
             ?.merge(style)
             .copyWith(
               color: Colors.blueAccent,
               decoration: TextDecoration.underline,
             )
             .merge(linkStyle),
+        onOpen: onOpen,
+        useMouseRegion: true,
+        textStyleBuilder: textStyleBuilder,
       ),
       textAlign: textAlign,
       textDirection: textDirection,
@@ -157,6 +162,10 @@ class SelectableLinkify extends StatelessWidget {
 
   /// Style of link text
   final TextStyle? linkStyle;
+
+  /// Builder to determine style of text (both non-link and link). If this is provided
+  /// [style] and [linkStyle] will be ignored.
+  final TextStyle? Function(LinkifyElement)? textStyleBuilder;
 
   // Text.rich
 
@@ -234,6 +243,7 @@ class SelectableLinkify extends StatelessWidget {
     // TextSpan
     this.style,
     this.linkStyle,
+    this.textStyleBuilder,
     // RichText
     this.textAlign,
     this.textDirection,
@@ -271,17 +281,18 @@ class SelectableLinkify extends StatelessWidget {
     return SelectableText.rich(
       buildTextSpan(
         elements,
-        style: Theme.of(context).textTheme.bodyText2?.merge(style),
         onOpen: onOpen,
+        style: Theme.of(context).textTheme.bodyMedium?.merge(style),
         linkStyle: Theme.of(context)
             .textTheme
-            .bodyText2
+            .bodyMedium
             ?.merge(style)
             .copyWith(
               color: Colors.blueAccent,
               decoration: TextDecoration.underline,
             )
             .merge(linkStyle),
+        textStyleBuilder: textStyleBuilder,
       ),
       textAlign: textAlign,
       textDirection: textDirection,
@@ -328,35 +339,45 @@ TextSpan buildTextSpan(
   List<LinkifyElement> elements, {
   TextStyle? style,
   TextStyle? linkStyle,
+  TextStyle? Function(LinkifyElement)? textStyleBuilder,
   LinkCallback? onOpen,
   bool useMouseRegion = false,
 }) {
   return TextSpan(
     children: elements.map<InlineSpan>(
       (element) {
+        final textStyle = textStyleBuilder != null ? textStyleBuilder(element) : null;
+
+        if (element is TextElement) {
+          return TextSpan(
+            text: element.text,
+            style: textStyle ?? style,
+          );
+        }
+
         if (element is LinkableElement) {
           if (useMouseRegion) {
             return LinkableSpan(
               mouseCursor: SystemMouseCursors.click,
               inlineSpan: TextSpan(
                 text: element.text,
-                style: linkStyle,
+                style: textStyle ?? linkStyle,
                 recognizer: onOpen != null ? (TapGestureRecognizer()..onTap = () => onOpen(element)) : null,
               ),
             );
           } else {
             return TextSpan(
               text: element.text,
-              style: linkStyle,
+              style: textStyle ?? linkStyle,
               recognizer: onOpen != null ? (TapGestureRecognizer()..onTap = () => onOpen(element)) : null,
             );
           }
-        } else {
-          return TextSpan(
-            text: element.text,
-            style: style,
-          );
         }
+
+        return TextSpan(
+          text: element.text,
+          style: textStyle ?? linkStyle,
+        );
       },
     ).toList(),
   );
